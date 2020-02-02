@@ -102,14 +102,30 @@ class CPU:
         self.ram_write(self.register[7], register_value)
         print(f"PUSH value: {self.ram[self.register[7]]} to self.ram {self.register[7]}")
 
+    def CALL(self):
+        reg_num = self.ram_read(self.pc+1)
+        register_value = self.register[reg_num]
+        stack_value = self.pc+2
+        self.register[7]-=1
+        self.ram_write(self.register[7], stack_value)
+        self.pc = register_value
+
+    def RET(self):
+        stack_value = self.ram_read(self.register[7])
+        print("STACK VALUE", stack_value)
+        self.pc = stack_value
+        self.register[7]+=1
 
     def func_switcher(self, instruction):
         switcher = {
             0b10000010: lambda: self.LDI(),
             0b01000111: lambda: self.PRN(),
             0b10100010: lambda: self.alu("MULT", self.ram[self.pc+1], self.ram[self.pc+2]),
+            0b10100000: lambda: self.alu("ADD", self.ram[self.pc+1], self.ram[self.pc+2]),
             0b01000110: lambda: self.POP(),
-            0b01000101: lambda: self.PUSH()
+            0b01000101: lambda: self.PUSH(),
+            0b01010000: lambda: self.CALL(),
+            0b00010001: lambda: self.RET()
         }
         return switcher.get(instruction, lambda: "Invalid command")
 
@@ -118,6 +134,7 @@ class CPU:
         halted = False
         print(f"Stack pointer = {self.register[7]}")
         while not halted:
+            print("PC", self.pc)
             instruction = self.ram[self.pc]
             # print("instruction in run: ", instruction)
             # print("self.pc: ", self.pc)
@@ -127,6 +144,7 @@ class CPU:
             else:
                 func = self.func_switcher(instruction)
                 func()
-            operand_count = instruction >> 6
-            instruction_length = operand_count+1
-            self.pc += instruction_length
+                if instruction not in (0b01010000, 0b00010001):
+                    operand_count = instruction >> 6
+                    instruction_length = operand_count+1
+                    self.pc += instruction_length
